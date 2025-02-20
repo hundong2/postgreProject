@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:13
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backups:/backups
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres/entrypoint.sh:/custom-entrypoint.sh
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+  postgrest:
+    image: postgrest/postgrest
+    volumes:
+      - ./postgrest-wait.sh:/postgrest-wait.sh
+    environment:
+      PGRST_DB_URI: postgres://postgrest:postgres@postgres:5432/mydb
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: postgrest
+      PGRST_JWT_SECRET: mysecret
+    ports:
+      - "5433:3000"
+    depends_on:
+      - postgres  # 단순 문자열로 유지
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3003:3000"
+    networks:
+      - app-network
+
+volumes:
+  pgdata:
+  backups:
+  grafana-data:
+
+networks:
+  app-network:
+    driver: bridge
